@@ -10,6 +10,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Arrange files into the Android project layout
+        run: |
+          if [ -f MainActivity.kt ]; then
+            mkdir -p app/src/main/java/com/example/btchat app/src/main/res/layout app/src/main/res/values gradle/wrapper
+            mv "build.gradle (1).kts" app/build.gradle.kts
+            mv AndroidManifest.xml app/src/main/
+            mv MainActivity.kt BluetoothChatService.kt app/src/main/java/com/example/btchat/
+            mv activity_main.xml app/src/main/res/layout/
+            mv strings.xml app/src/main/res/values/
+            mv gradle-wrapper.properties gradle/wrapper/
+          fi
+
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
