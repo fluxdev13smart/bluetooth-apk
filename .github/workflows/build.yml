@@ -35,7 +35,7 @@ jobs:
       - name: Report errors
         if: failure()
         run: |
-          grep -E '^e: |error:|What went wrong|Execution failed|AAPT|Could not' build.log | head -12 | sed 's/%/%25/g' | while IFS= read -r l; do echo "::error::$l"; done
+          { grep -E '^e: ' build.log | head -10; grep -A10 'What went wrong' build.log | head -16; } | sed 's/%/%25/g' | while IFS= read -r l; do [ -n "$l" ] && echo "::error::$l"; done || true
 
       - name: Publish release
         if: success() && github.ref == 'refs/heads/main'
