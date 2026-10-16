@@ -613,10 +613,15 @@ object Engine {
 
     fun clearPending() = _state.update { it.copy(pending = emptyList()) }
 
+    /** A message written on the home screen, sent as soon as a device is chosen and connected. */
+    fun setPendingText(t: String) = _state.update { it.copy(pendingText = t) }
+
     private fun flushPending() {
         val p = _state.value.pending
-        if (p.isEmpty()) return
-        _state.update { it.copy(pending = emptyList()) }
+        val t = _state.value.pendingText
+        if (p.isEmpty() && t.isBlank()) return
+        _state.update { it.copy(pending = emptyList(), pendingText = "") }
+        if (t.isNotBlank()) sendText(t)
         io.execute { p.forEach { offer(it) } }
     }
 

@@ -69,5 +69,6 @@ data class EngineState(
     val notice: String? = null,
     val carMode: Boolean = false,
     val myName: String = "",
-    val running: Boolean = false
+    val running: Boolean = false,
+    val pendingText: String = ""
 )

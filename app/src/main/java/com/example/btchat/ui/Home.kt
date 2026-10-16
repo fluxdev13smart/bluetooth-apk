@@ -17,7 +17,16 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -212,6 +221,35 @@ private fun BottomBar(st: EngineState, perms: Perms, act: Actions, modifier: Mod
             .padding(start = 16.dp, end = 16.dp, top = 30.dp, bottom = 14.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
+        var composing by remember { mutableStateOf(false) }
+        if (composing || st.pendingText.isNotEmpty()) {
+            Group {
+                Column(Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, top = 12.dp, bottom = 10.dp)) {
+                    Row(verticalAlignment = Alignment.Top) {
+                        BasicTextField(
+                            value = st.pendingText,
+                            onValueChange = { Engine.setPendingText(it) },
+                            textStyle = Ty.body.copy(color = P.text),
+                            cursorBrush = SolidColor(P.accent),
+                            maxLines = 4,
+                            keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
+                            modifier = Modifier.weight(1f).padding(top = 6.dp),
+                            decorationBox = { inner ->
+                                Box {
+                                    if (st.pendingText.isEmpty()) BtText("Write a message", Ty.body, P.text2)
+                                    inner()
+                                }
+                            }
+                        )
+                        Box(
+                            Modifier.size(40.dp).pressable { Engine.setPendingText(""); composing = false },
+                            contentAlignment = Alignment.Center
+                        ) { GlyphIcon(Glyph.Close, P.text2, 18.dp) }
+                    }
+                    BtText("Pick a device above to send it", Ty.small, P.text2)
+                }
+            }
+        }
         if (st.pending.isNotEmpty()) {
             val n = st.pending.size
             Group {
@@ -231,11 +269,12 @@ private fun BottomBar(st: EngineState, perms: Perms, act: Actions, modifier: Mod
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Pill(
-                if (st.visible) "Visible" else "Make me visible",
+                if (st.visible) "Visible" else "Be visible",
                 act.makeVisible, Modifier.weight(1f),
                 filled = false, enabled = perms.bluetooth && st.btOn && !st.visible
             )
-            Pill("Send files", act.pickFiles, Modifier.weight(1f), glyph = Glyph.Plus, enabled = perms.bluetooth)
+            Pill("Message", { composing = true }, Modifier.weight(1f), enabled = perms.bluetooth)
+            Pill("Files", act.pickFiles, Modifier.weight(1f), glyph = Glyph.Plus, filled = false, enabled = perms.bluetooth)
         }
     }
 }
