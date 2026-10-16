@@ -54,6 +54,11 @@ fun BtRoot(perms: Perms, act: Actions) {
             ) { connected ->
                 if (connected) SessionScreen(st, lastPeer[0] ?: Peer("", ""), act) else HomeScreen(st, perms, act)
             }
+            AnimatedVisibility(
+                visible = Nav.saved,
+                enter = slideInVertically(smooth()) { it / 6 } + fadeIn(),
+                exit = slideOutVertically(quick()) { it / 6 } + fadeOut()
+            ) { SavedScreen(st.link is Link.Connected) }
             NoticeBar(st.notice)
         }
     }

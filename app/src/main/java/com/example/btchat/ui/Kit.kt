@@ -115,7 +115,7 @@ fun Modifier.pressable(
 
 // ------------------------------------------------------------------ icons (drawn, not stock)
 
-enum class Glyph { Plus, Up, Close, Check, Back, Phone, Laptop, File }
+enum class Glyph { Plus, Up, Close, Check, Back, Phone, Laptop, File, Star }
 
 @Composable
 fun GlyphIcon(g: Glyph, color: Color, dp: Dp = 22.dp, modifier: Modifier = Modifier) {
@@ -153,6 +153,7 @@ fun GlyphIcon(g: Glyph, color: Color, dp: Dp = 22.dp, modifier: Modifier = Modif
                 drawRoundRect(color, pt(4f, 5.5f), Size(16f * u, 11f * u), CornerRadius(2f * u), style = st)
                 drawLine(color, pt(2.5f, 19.5f), pt(21.5f, 19.5f), sw, StrokeCap.Round)
             }
+            Glyph.Star -> drawPath(poly(12.0f, 3.4f, 14.35f, 9.36f, 20.75f, 9.76f, 15.8f, 13.84f, 17.41f, 20.04f, 12.0f, 16.6f, 6.59f, 20.04f, 8.2f, 13.84f, 3.25f, 9.76f, 9.65f, 9.36f, closed = true), color, style = st)
             Glyph.File -> {
                 drawPath(poly(6f, 3.5f, 13.5f, 3.5f, 18.5f, 8.5f, 18.5f, 20.5f, 6f, 20.5f, closed = true), color, style = st)
                 drawPath(poly(13.5f, 3.5f, 13.5f, 8.5f, 18.5f, 8.5f), color, style = st)

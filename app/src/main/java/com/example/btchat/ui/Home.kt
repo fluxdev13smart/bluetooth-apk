@@ -84,7 +84,11 @@ fun HomeScreen(st: EngineState, perms: Perms, act: Actions) {
 @Composable
 private fun Header(st: EngineState) {
     Column(Modifier.statusBarsPadding().padding(top = 14.dp, start = 4.dp)) {
-        LogoTile(38.dp)
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            LogoTile(38.dp)
+            Spacer(Modifier.weight(1f))
+            Pill("Saved", { Nav.saved = true }, Modifier.width(112.dp), glyph = Glyph.Star, filled = false, height = 38.dp)
+        }
         Spacer(Modifier.height(18.dp))
         BtText("Nearby", Ty.large)
         val sub = if (st.myName.isEmpty()) "Send messages and files over Bluetooth"
@@ -197,6 +201,18 @@ private fun SettingsGroup(st: EngineState, act: Actions) {
             }
             Spacer(Modifier.width(14.dp))
             Toggle(st.carMode) { Engine.setCarMode(it) }
+        }
+        Divider(16.dp)
+        Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                BtText("Copy received messages", Ty.bodyB)
+                BtText(
+                    "Every incoming message goes to the clipboard, so you can paste it straight into a map or search box.",
+                    Ty.small, P.text2, Modifier.padding(top = 2.dp)
+                )
+            }
+            Spacer(Modifier.width(14.dp))
+            Toggle(st.autoCopy) { Engine.setAutoCopy(it) }
         }
         Divider(16.dp)
         Row(

@@ -10,6 +10,8 @@ import android.bluetooth.BluetoothSocket
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.IntentFilter
 import android.media.AudioAttributes
 import android.media.AudioFocusRequest
@@ -183,7 +185,8 @@ object Engine {
     fun init(ctx: Context) {
         if (::app.isInitialized) return
         app = ctx.applicationContext
-        _state.update { it.copy(carMode = app.getSharedPreferences("btchat", Context.MODE_PRIVATE).getBoolean("car", false)) }
+        val sp0 = app.getSharedPreferences("btchat", Context.MODE_PRIVATE)
+        _state.update { it.copy(carMode = sp0.getBoolean("car", false), autoCopy = sp0.getBoolean("autocopy", false)) }
         adapter = (app.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager).adapter
         val f = IntentFilter().apply {
             addAction(BluetoothDevice.ACTION_FOUND)
@@ -549,6 +552,7 @@ object Engine {
     private fun onText(t: String) {
         addItem(TextItem(seq(), now(), false, t))
         if (!uiVisible) Notifier.message(app, peerName(), t)
+        if (_state.value.autoCopy) main.post { copyQuiet(t) }
         if (_state.value.carMode) {
             val who = peerName()
             main.post {
@@ -759,6 +763,26 @@ object Engine {
         app.getSharedPreferences("btchat", Context.MODE_PRIVATE).edit().putBoolean("car", on).apply()
         _state.update { it.copy(carMode = on) }
     }
+
+    fun setAutoCopy(on: Boolean) {
+        app.getSharedPreferences("btchat", Context.MODE_PRIVATE).edit().putBoolean("autocopy", on).apply()
+        _state.update { it.copy(autoCopy = on) }
+    }
+
+    private fun copyQuiet(t: String) {
+        try {
+            val cm = app.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+            cm.setPrimaryClip(ClipData.newPlainText("BT Chat", t))
+        } catch (_: Exception) {}
+    }
+
+    /** Copies to the clipboard and tells the user. */
+    fun copy(text: String) {
+        copyQuiet(text)
+        notice("Copied")
+    }
+
+    fun toast(msg: String) = notice(msg)
 
     fun dismissNotice() = _state.update { it.copy(notice = null) }
 

@@ -70,6 +70,7 @@ data class EngineState(
     val notice: String? = null,
     val myName: String = "",
     val carMode: Boolean = false,
+    val autoCopy: Boolean = false,
     val running: Boolean = false,
     val pendingText: String = ""
 )

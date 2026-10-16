@@ -8,5 +8,6 @@ class BtApp : Application() {
         super.onCreate()
         Engine.init(this)
         Notifier.ensureChannels(this)
+        com.example.btchat.core.Saved.init(this)
     }
 }

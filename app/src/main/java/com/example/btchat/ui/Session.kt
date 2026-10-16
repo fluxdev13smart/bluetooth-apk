@@ -1,6 +1,12 @@
 package com.example.btchat.ui
 
 import android.content.Context
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.runtime.collectAsState
+import com.example.btchat.core.Engine as BtEngine
+import com.example.btchat.core.Saved
 import android.content.Intent
 import android.net.Uri
 import android.util.Size as AndroidSize
@@ -97,7 +103,7 @@ fun SessionScreen(st: EngineState, peer: Peer, act: Actions) {
 
     Box(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize()) {
-            TopBar(peer.name, leave)
+            TopBar(peer.name, leave) { Nav.saved = true }
             Box(Modifier.weight(1f).fillMaxWidth()) {
                 if (list.size <= 1) {
                     Empty(peer.name, act) { focus.requestFocus() }
@@ -109,6 +115,16 @@ fun SessionScreen(st: EngineState, peer: Peer, act: Actions) {
                     ) {
                         items(list, key = { it.id }) { item -> TimelineRow(item, peer.name) }
                     }
+                }
+            }
+            val saved by Saved.items.collectAsState()
+            if (saved.isNotEmpty()) {
+                LazyRow(
+                    Modifier.padding(bottom = 6.dp),
+                    contentPadding = PaddingValues(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(saved, key = { it.id }) { s -> ActionChip(s.title) { Engine.sendText(s.text) } }
                 }
             }
             Composer(text, { text = it }, act, focus) {
@@ -141,7 +157,7 @@ fun SessionScreen(st: EngineState, peer: Peer, act: Actions) {
 }
 
 @Composable
-private fun TopBar(name: String, onBack: () -> Unit) {
+private fun TopBar(name: String, onBack: () -> Unit, onSaved: () -> Unit) {
     Box(Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 8.dp, vertical = 6.dp)) {
         Row(
             Modifier.align(Alignment.CenterStart).pressable(onClick = onBack).padding(horizontal = 8.dp, vertical = 10.dp),
@@ -151,7 +167,11 @@ private fun TopBar(name: String, onBack: () -> Unit) {
             Spacer(Modifier.width(4.dp))
             BtText("Disconnect", Ty.body, P.accentText)
         }
-        Column(Modifier.align(Alignment.Center).widthIn(max = 180.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        Box(
+            Modifier.align(Alignment.CenterEnd).size(44.dp).pressable(haptic = true, onClick = onSaved),
+            contentAlignment = Alignment.Center
+        ) { GlyphIcon(Glyph.Star, P.accentText) }
+        Column(Modifier.align(Alignment.Center).widthIn(max = 160.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             BtText(name, Ty.bodyB, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(Modifier.size(6.dp).clip(CircleShape).background(P.ok))
@@ -269,19 +289,45 @@ private fun TimelineRow(item: Item, peerName: String) {
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun Bubble(i: TextItem) {
     val out = i.outgoing
+    val view = LocalView.current
+    var menu by remember { mutableStateOf(false) }
     val shape = RoundedCornerShape(20.dp, 20.dp, if (out) 6.dp else 20.dp, if (out) 20.dp else 6.dp)
     Box(Modifier.fillMaxWidth(), contentAlignment = if (out) Alignment.CenterEnd else Alignment.CenterStart) {
-        Box(
-            Modifier
-                .widthIn(max = 300.dp)
-                .clip(shape)
-                .background(if (out) P.accent else P.surface)
-                .then(if (out) Modifier else Modifier.border(0.5.dp, P.line, shape))
-                .padding(horizontal = 14.dp, vertical = 9.dp)
-        ) { BtText(i.text, Ty.body, if (out) Color.White else P.text) }
+        Column(horizontalAlignment = if (out) Alignment.End else Alignment.Start) {
+            Box(
+                Modifier
+                    .widthIn(max = 300.dp)
+                    .clip(shape)
+                    .background(if (out) P.accent else P.surface)
+                    .then(if (out) Modifier else Modifier.border(0.5.dp, P.line, shape))
+                    .combinedClickable(
+                        onClick = { if (menu) menu = false },
+                        onLongClick = {
+                            view.performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS)
+                            menu = !menu
+                        }
+                    )
+                    .padding(horizontal = 14.dp, vertical = 9.dp)
+            ) { BtText(i.text, Ty.body, if (out) Color.White else P.text) }
+            AnimatedVisibility(
+                visible = menu,
+                enter = fadeIn() + scaleIn(quick<Float>()),
+                exit = fadeOut()
+            ) {
+                Row(Modifier.padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    ActionChip("Copy") { BtEngine.copy(i.text); menu = false }
+                    ActionChip("Save") {
+                        Saved.upsert(0L, "", i.text)
+                        BtEngine.toast("Saved to favorites")
+                        menu = false
+                    }
+                }
+            }
+        }
     }
 }
 
