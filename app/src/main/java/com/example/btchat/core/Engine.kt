@@ -11,6 +11,11 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.media.AudioAttributes
+import android.media.AudioFocusRequest
+import android.media.AudioManager
+import android.speech.tts.TextToSpeech
+import android.speech.tts.UtteranceProgressListener
 import android.net.Uri
 import android.os.Build
 import android.os.Handler
@@ -80,6 +85,7 @@ object Engine {
     private val ins = ConcurrentHashMap<Long, In>()
     private val prog = ConcurrentHashMap<Long, LongArray>()
 
+    private var speaker: Speaker? = null
     @Volatile private var session: Session? = null
     @Volatile private var started = false
     @Volatile private var uiVisible = false
@@ -124,6 +130,51 @@ object Engine {
         var got = 0L
     }
 
+    /** Reads incoming messages aloud through whatever audio output is active (phone speaker, headset, car). */
+    private class Speaker(private val ctx: Context) {
+        private var tts: TextToSpeech? = null
+        private var ready = false
+        private val queued = ArrayList<String>()
+        private val am = ctx.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+        private val attrs = AudioAttributes.Builder()
+            .setUsage(AudioAttributes.USAGE_MEDIA)
+            .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+            .build()
+        private val focus = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK)
+            .setAudioAttributes(attrs)
+            .setOnAudioFocusChangeListener { }
+            .build()
+
+        fun speak(text: String) {
+            if (tts == null) {
+                tts = TextToSpeech(ctx) { status ->
+                    ready = status == TextToSpeech.SUCCESS
+                    if (ready) {
+                        tts?.setAudioAttributes(attrs)
+                        tts?.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
+                            override fun onStart(id: String?) {}
+                            override fun onDone(id: String?) { am.abandonAudioFocusRequest(focus) }
+                            @Deprecated("Deprecated in Java")
+                            override fun onError(id: String?) { am.abandonAudioFocusRequest(focus) }
+                        })
+                        queued.forEach { say(it) }
+                        queued.clear()
+                    }
+                }
+            }
+            if (ready) say(text) else queued.add(text)
+        }
+
+        private fun say(text: String) {
+            val t = tts ?: return
+            val arabic = text.any { it in '\u0600'..'\u06FF' }
+            val loc = if (arabic) Locale("ar") else Locale.getDefault()
+            if (t.isLanguageAvailable(loc) >= TextToSpeech.LANG_AVAILABLE) t.language = loc
+            am.requestAudioFocus(focus)
+            t.speak(text, TextToSpeech.QUEUE_ADD, null, UUID.randomUUID().toString())
+        }
+    }
+
     private fun now() = System.currentTimeMillis()
     private fun seq() = ids.getAndIncrement()
 
@@ -132,6 +183,7 @@ object Engine {
     fun init(ctx: Context) {
         if (::app.isInitialized) return
         app = ctx.applicationContext
+        _state.update { it.copy(carMode = app.getSharedPreferences("btchat", Context.MODE_PRIVATE).getBoolean("car", false)) }
         adapter = (app.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager).adapter
         val f = IntentFilter().apply {
             addAction(BluetoothDevice.ACTION_FOUND)
@@ -497,6 +549,13 @@ object Engine {
     private fun onText(t: String) {
         addItem(TextItem(seq(), now(), false, t))
         if (!uiVisible) Notifier.message(app, peerName(), t)
+        if (_state.value.carMode) {
+            val who = peerName()
+            main.post {
+                val sp = speaker ?: Speaker(app).also { speaker = it }
+                sp.speak("$who says: $t")
+            }
+        }
     }
 
     private fun onOffer(tid: Long, name: String, size: Long, mime: String) {
@@ -695,6 +754,11 @@ object Engine {
     }
 
     // ---------------------------------------------------------------- small helpers
+
+    fun setCarMode(on: Boolean) {
+        app.getSharedPreferences("btchat", Context.MODE_PRIVATE).edit().putBoolean("car", on).apply()
+        _state.update { it.copy(carMode = on) }
+    }
 
     fun dismissNotice() = _state.update { it.copy(notice = null) }
 

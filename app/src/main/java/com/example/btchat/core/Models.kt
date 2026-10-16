@@ -69,6 +69,7 @@ data class EngineState(
     val pending: List<PendingFile> = emptyList(),
     val notice: String? = null,
     val myName: String = "",
+    val carMode: Boolean = false,
     val running: Boolean = false,
     val pendingText: String = ""
 )

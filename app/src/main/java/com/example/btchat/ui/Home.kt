@@ -187,6 +187,18 @@ private fun DeviceRow(d: Device, connecting: Link.Connecting?) {
 @Composable
 private fun SettingsGroup(st: EngineState, act: Actions) {
     Group {
+        Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                BtText("Read messages aloud", Ty.bodyB)
+                BtText(
+                    "Off by default. Turn on in the car: messages are spoken through whatever audio this phone is connected to.",
+                    Ty.small, P.text2, Modifier.padding(top = 2.dp)
+                )
+            }
+            Spacer(Modifier.width(14.dp))
+            Toggle(st.carMode) { Engine.setCarMode(it) }
+        }
+        Divider(16.dp)
         Row(
             Modifier.fillMaxWidth().pressable(onClick = act.openDownloads).padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
