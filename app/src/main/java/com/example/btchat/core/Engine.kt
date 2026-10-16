@@ -18,6 +18,8 @@ import android.os.Looper
 import android.speech.tts.TextToSpeech
 import androidx.core.content.ContextCompat
 import androidx.core.content.IntentCompat
+import com.example.btchat.ConnectionService
+import com.example.btchat.Notifier
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
@@ -174,6 +176,8 @@ object Engine {
     /** Call once the Bluetooth permissions are granted. Safe to call repeatedly. */
     fun start() {
         started = true
+        _state.update { it.copy(running = true) }
+        ConnectionService.start(app)
         refresh()
         listen()
         maybeScan()
@@ -181,6 +185,7 @@ object Engine {
 
     fun shutdown() {
         started = false
+        _state.update { it.copy(running = false) }
         stopScan()
         session?.let { it.byUser = true; it.close() }
         closeServer()
@@ -403,6 +408,7 @@ object Engine {
         }
         val me = _state.value.myName
         s.send { writeByte(T_HELLO); writeByte(1); writeUTF(me.take(100)) }
+        if (!uiVisible) Notifier.message(app, name, "Connected over Bluetooth")
         flushPending()
         Thread { readLoop(s) }.also { it.isDaemon = true; it.start() }
     }
@@ -494,6 +500,7 @@ object Engine {
 
     private fun onText(t: String) {
         addItem(TextItem(seq(), now(), false, t))
+        if (!uiVisible) Notifier.message(app, peerName(), t)
         if (_state.value.carMode) {
             val who = peerName()
             main.post {
@@ -508,6 +515,7 @@ object Engine {
         val safe = FileStore.clean(name)
         ins[tid] = In(tid, id, safe, size, mime)
         addItem(FileItem(id, now(), false, safe, size, mime, FileStatus.Offered))
+        if (!uiVisible) Notifier.message(app, peerName(), "wants to send you $safe")
     }
 
     private fun onChunk(s: Session, tid: Long, buf: ByteArray, len: Int) {

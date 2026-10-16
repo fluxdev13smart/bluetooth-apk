@@ -42,7 +42,7 @@ class MainActivity : ComponentActivity() {
 
     private val actions by lazy {
         Actions(
-            askPermissions = { askPerm.launch(neededPermissions()) },
+            askPermissions = { askPerm.launch(requestList()) },
             enableBt = { enableBt.launch(Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)) },
             makeVisible = {
                 visibleReq.launch(
@@ -94,6 +94,9 @@ class MainActivity : ComponentActivity() {
         } else {
             arrayOf(Manifest.permission.ACCESS_FINE_LOCATION)
         }
+
+    private fun requestList(): Array<String> =
+        if (Build.VERSION.SDK_INT >= 33) neededPermissions() + Manifest.permission.POST_NOTIFICATIONS else neededPermissions()
 
     private fun readPerms() {
         val ok = neededPermissions().all { checkSelfPermission(it) == PackageManager.PERMISSION_GRANTED }

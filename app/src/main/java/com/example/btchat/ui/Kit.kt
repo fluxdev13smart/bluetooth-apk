@@ -163,25 +163,18 @@ fun GlyphIcon(g: Glyph, color: Color, dp: Dp = 22.dp, modifier: Modifier = Modif
 
 // ------------------------------------------------------------------ logo and radar
 
-/** The mark: a speech bubble drawn as a ping. Same geometry as the launcher icon. */
+/**
+ * The mark: a lowercase "b" made of a bar and a dot. The bar is a device, the dot is a blip,
+ * the arc is the signal between them. Same geometry as the launcher icon.
+ */
 @Composable
 fun LogoMark(dp: Dp, modifier: Modifier = Modifier) {
     Canvas(modifier.size(dp)) {
         val u = this.size.minDimension / 108f
-        val grad = Brush.linearGradient(
-            listOf(Color(0xFF7DDCFF), Color(0xFF2D6CF6)),
-            start = Offset(30f * u, 26f * u),
-            end = Offset(80f * u, 84f * u)
-        )
-        val bubble = Path().apply {
-            moveTo(33.22f * u, 62f * u)
-            arcTo(Rect(Offset(30f * u, 26f * u), Size(48f * u, 48f * u)), 150f, 310f, false)
-            lineTo(32f * u, 77f * u)
-            close()
-        }
-        drawPath(bubble, grad, style = Stroke(5.5f * u, cap = StrokeCap.Round, join = StrokeJoin.Round))
-        drawCircle(grad, 13f * u, Offset(54f * u, 50f * u), 0.75f, Stroke(4f * u))
-        drawCircle(grad, 5.5f * u, Offset(54f * u, 50f * u))
+        val blue = Color(0xFF3D7BFF)
+        drawCircle(blue, 17f * u, Offset(49f * u, 63.5f * u))
+        drawLine(Color.White, Offset(34f * u, 35f * u), Offset(34f * u, 75f * u), 11f * u, StrokeCap.Round)
+        drawArc(blue, -75f, 60f, false, Offset(22f * u, 36.5f * u), Size(54f * u, 54f * u), style = Stroke(5f * u, cap = StrokeCap.Round))
     }
 }
 
@@ -191,7 +184,7 @@ fun LogoTile(dp: Dp = 40.dp, modifier: Modifier = Modifier) {
         modifier
             .size(dp)
             .clip(RoundedCornerShape(dp * 0.28f))
-            .background(Brush.linearGradient(listOf(Color(0xFF16224A), Color(0xFF070A12)))),
+            .background(Color(0xFF0B0F1A)),
         contentAlignment = Alignment.Center
     ) { LogoMark(dp) }
 }

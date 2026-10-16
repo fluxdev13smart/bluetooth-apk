@@ -52,6 +52,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.SolidColor
@@ -81,6 +83,7 @@ fun SessionScreen(st: EngineState, peer: Peer, act: Actions) {
     val listState = rememberLazyListState()
     var text by rememberSaveable { mutableStateOf("") }
     var confirm by remember { mutableStateOf(false) }
+    val focus = remember { FocusRequester() }
     val active = list.any { it is FileItem && it.status == FileStatus.Active }
     val view = LocalView.current
 
@@ -97,7 +100,7 @@ fun SessionScreen(st: EngineState, peer: Peer, act: Actions) {
             TopBar(peer.name, leave)
             Box(Modifier.weight(1f).fillMaxWidth()) {
                 if (list.size <= 1) {
-                    Empty(peer.name, act)
+                    Empty(peer.name, act) { focus.requestFocus() }
                 } else {
                     LazyColumn(
                         state = listState,
@@ -108,7 +111,7 @@ fun SessionScreen(st: EngineState, peer: Peer, act: Actions) {
                     }
                 }
             }
-            Composer(text, { text = it }, act) {
+            Composer(text, { text = it }, act, focus) {
                 Engine.sendText(text)
                 text = ""
             }
@@ -160,7 +163,7 @@ private fun TopBar(name: String, onBack: () -> Unit) {
 }
 
 @Composable
-private fun Empty(name: String, act: Actions) {
+private fun Empty(name: String, act: Actions, onMessage: () -> Unit) {
     Column(
         Modifier.fillMaxSize().padding(32.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -173,12 +176,15 @@ private fun Empty(name: String, act: Actions) {
             "Say hi to $name, or send photos, videos and files straight over Bluetooth.",
             Ty.body, P.text2, Modifier.padding(top = 6.dp, bottom = 20.dp), align = TextAlign.Center
         )
-        Pill("Choose files", act.pickFiles, glyph = Glyph.Plus)
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Pill("Message", onMessage, height = 46.dp)
+            Pill("Choose files", act.pickFiles, glyph = Glyph.Plus, filled = false, height = 46.dp)
+        }
     }
 }
 
 @Composable
-private fun Composer(text: String, onText: (String) -> Unit, act: Actions, onSend: () -> Unit) {
+private fun Composer(text: String, onText: (String) -> Unit, act: Actions, focus: FocusRequester, onSend: () -> Unit) {
     val shape = RoundedCornerShape(22.dp)
     Row(
         Modifier
@@ -210,10 +216,10 @@ private fun Composer(text: String, onText: (String) -> Unit, act: Actions, onSen
                 cursorBrush = SolidColor(P.accent),
                 maxLines = 5,
                 keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().focusRequester(focus),
                 decorationBox = { inner ->
                     Box {
-                        if (text.isEmpty()) BtText("Message", Ty.body, P.text3)
+                        if (text.isEmpty()) BtText("Message", Ty.body, P.text2)
                         inner()
                     }
                 }

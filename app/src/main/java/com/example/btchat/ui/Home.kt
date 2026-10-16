@@ -109,7 +109,7 @@ private fun Hero(st: EngineState, perms: Perms, act: Actions, connecting: Link.C
             }
             BtText(title, Ty.title, align = TextAlign.Center)
             BtText(
-                "On the other phone, open BT Chat and tap Make me visible.",
+                "Tap a phone to chat or send files. On the other phone, open BT Chat and tap Make me visible.",
                 Ty.small, P.text2, Modifier.padding(top = 4.dp, bottom = 4.dp), align = TextAlign.Center
             )
         }
@@ -165,7 +165,7 @@ private fun DeviceRow(d: Device, connecting: Link.Connecting?) {
         }
         Spacer(Modifier.width(8.dp))
         BtText(
-            if (busy) "Connecting…" else if (d.bonded) "Connect" else "Pair",
+            if (busy) "Connecting…" else if (d.bonded) "Chat" else "Pair & chat",
             Ty.bodyB, P.accentText
         )
     }
