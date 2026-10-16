@@ -191,6 +191,17 @@ private fun DeviceRow(d: Device, connecting: Link.Connecting?) {
 @Composable
 private fun SettingsGroup(st: EngineState, act: Actions) {
     Group {
+        Row(
+            Modifier.fillMaxWidth().pressable { Nav.car = true }.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(Modifier.weight(1f)) {
+                BtText("Car screen", Ty.bodyB)
+                BtText("Big text and buttons for the car display.", Ty.small, P.text2, Modifier.padding(top = 2.dp))
+            }
+            BtText("Open", Ty.bodyB, P.accentText)
+        }
+        Divider(16.dp)
         Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 BtText("Read messages aloud", Ty.bodyB)

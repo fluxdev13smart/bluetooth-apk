@@ -118,12 +118,13 @@ fun SessionScreen(st: EngineState, peer: Peer, act: Actions) {
                 }
             }
             val saved by Saved.items.collectAsState()
-            if (saved.isNotEmpty()) {
+            run {
                 LazyRow(
                     Modifier.padding(bottom = 6.dp),
                     contentPadding = PaddingValues(horizontal = 16.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
+                    item { ActionChip("Car screen") { Nav.car = true } }
                     items(saved, key = { it.id }) { s -> ActionChip(s.title) { Engine.sendText(s.text) } }
                 }
             }

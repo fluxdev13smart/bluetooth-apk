@@ -47,6 +47,7 @@ import com.example.btchat.core.SavedItem
 /** Tiny navigation flag: the Saved screen slides over whatever is showing. */
 object Nav {
     var saved by mutableStateOf(false)
+    var car by mutableStateOf(false)
 }
 
 @Composable

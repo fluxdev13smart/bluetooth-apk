@@ -59,6 +59,11 @@ fun BtRoot(perms: Perms, act: Actions) {
                 enter = slideInVertically(smooth()) { it / 6 } + fadeIn(),
                 exit = slideOutVertically(quick()) { it / 6 } + fadeOut()
             ) { SavedScreen(st.link is Link.Connected) }
+            AnimatedVisibility(
+                visible = Nav.car,
+                enter = slideInVertically(smooth()) { it / 6 } + fadeIn(),
+                exit = slideOutVertically(quick()) { it / 6 } + fadeOut()
+            ) { CarScreen(st) }
             NoticeBar(st.notice)
         }
     }
