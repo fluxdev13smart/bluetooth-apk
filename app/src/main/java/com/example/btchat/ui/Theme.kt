@@ -3,7 +3,6 @@ package com.example.btchat.ui
 import android.provider.Settings
 import androidx.compose.animation.core.SpringSpec
 import androidx.compose.animation.core.spring
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
@@ -39,13 +38,13 @@ val LightPal = Pal(
 )
 
 val DarkPal = Pal(
-    bg = Color(0xFF0A0B0F), surface = Color(0xFF15171C), high = Color(0xFF242730), line = Color(0x1FFFFFFF),
-    text = Color(0xFFF2F4F8), text2 = Color(0xFFA3A9B8), text3 = Color(0xFF6F7586),
-    accent = Color(0xFF2D6CF6), accentText = Color(0xFF7BA6FF), soft = Color(0x332D6CF6),
-    ok = Color(0xFF34C77B), bad = Color(0xFFE5484D)
+    bg = Color(0xFF07090F), surface = Color(0xFF111522), high = Color(0xFF1C2236), line = Color(0x1AFFFFFF),
+    text = Color(0xFFF3F5FA), text2 = Color(0xFFA0A8BE), text3 = Color(0xFF6B748C),
+    accent = Color(0xFF4F8CFF), accentText = Color(0xFF8CB4FF), soft = Color(0x334F8CFF),
+    ok = Color(0xFF3DDC97), bad = Color(0xFFFF5D6C)
 )
 
-val LocalPal = staticCompositionLocalOf { LightPal }
+val LocalPal = staticCompositionLocalOf { DarkPal }
 
 /** True when the user turned animations off in system settings. */
 val LocalCalm = staticCompositionLocalOf { false }
@@ -75,7 +74,7 @@ fun BtTheme(content: @Composable () -> Unit) {
         Settings.Global.getFloat(ctx.contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f
     }
     CompositionLocalProvider(
-        LocalPal provides (if (isSystemInDarkTheme()) DarkPal else LightPal),
+        LocalPal provides DarkPal,
         LocalCalm provides calm
     ) { content() }
 }
