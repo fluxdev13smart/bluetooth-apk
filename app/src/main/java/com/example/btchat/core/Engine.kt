@@ -15,7 +15,6 @@ import android.net.Uri
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
-import android.speech.tts.TextToSpeech
 import androidx.core.content.ContextCompat
 import androidx.core.content.IntentCompat
 import com.example.btchat.ConnectionService
@@ -72,6 +71,9 @@ object Engine {
 
     private val known = LinkedHashMap<String, Device>()
     private val lastSeen = HashMap<String, Long>()
+    /** address -> true if the device advertises our service (BT Chat is open there), false if checked and not. */
+    private val appState = java.util.concurrent.ConcurrentHashMap<String, Boolean>()
+    private val appChecked = java.util.concurrent.ConcurrentHashMap<String, Long>()
     private val bondLatch = ConcurrentHashMap<String, CountDownLatch>()
     private val bondResult = ConcurrentHashMap<String, Int>()
     private val outs = ConcurrentHashMap<Long, Out>()
@@ -84,7 +86,6 @@ object Engine {
     private var wantScan = false
     private var acceptThread: Thread? = null
     private var server: BluetoothServerSocket? = null
-    private var speaker: Speaker? = null
 
     private class Session(val socket: BluetoothSocket, val address: String, var name: String) {
         val input = DataInputStream(BufferedInputStream(socket.inputStream, 32 * 1024))
@@ -123,33 +124,6 @@ object Engine {
         var got = 0L
     }
 
-    private class Speaker(private val ctx: Context) {
-        private var tts: TextToSpeech? = null
-        private var ready = false
-        private val queued = ArrayList<String>()
-
-        fun speak(text: String) {
-            if (tts == null) {
-                tts = TextToSpeech(ctx) { status ->
-                    ready = status == TextToSpeech.SUCCESS
-                    if (ready) {
-                        queued.forEach { say(it) }
-                        queued.clear()
-                    }
-                }
-            }
-            if (ready) say(text) else queued.add(text)
-        }
-
-        private fun say(text: String) {
-            val t = tts ?: return
-            val arabic = text.any { it in '؀'..'ۿ' }
-            val loc = if (arabic) Locale("ar") else Locale.getDefault()
-            if (t.isLanguageAvailable(loc) >= TextToSpeech.LANG_AVAILABLE) t.language = loc
-            t.speak(text, TextToSpeech.QUEUE_ADD, null, UUID.randomUUID().toString())
-        }
-    }
-
     private fun now() = System.currentTimeMillis()
     private fun seq() = ids.getAndIncrement()
 
@@ -159,11 +133,10 @@ object Engine {
         if (::app.isInitialized) return
         app = ctx.applicationContext
         adapter = (app.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager).adapter
-        val car = app.getSharedPreferences("btchat", Context.MODE_PRIVATE).getBoolean("car", false)
-        _state.update { it.copy(carMode = car) }
         val f = IntentFilter().apply {
             addAction(BluetoothDevice.ACTION_FOUND)
             addAction(BluetoothDevice.ACTION_BOND_STATE_CHANGED)
+            addAction(BluetoothDevice.ACTION_UUID)
             addAction(BluetoothAdapter.ACTION_DISCOVERY_STARTED)
             addAction(BluetoothAdapter.ACTION_DISCOVERY_FINISHED)
             addAction(BluetoothAdapter.ACTION_STATE_CHANGED)
@@ -240,8 +213,8 @@ object Engine {
     private fun publishDevices() {
         val t = now()
         val list = known.values
-            .map { it.copy(seen = (lastSeen[it.address] ?: 0L) > t - 40_000L) }
-            .sortedWith(compareByDescending<Device> { it.seen }.thenByDescending { it.rssi ?: -200 }.thenBy { it.name.lowercase() })
+            .map { it.copy(seen = (lastSeen[it.address] ?: 0L) > t - 40_000L, hasApp = appState[it.address]) }
+            .sortedWith(compareByDescending<Device> { it.seen }.thenByDescending { it.hasApp == true }.thenByDescending { it.rssi ?: -200 }.thenBy { it.name.lowercase() })
         _state.update { it.copy(devices = list) }
     }
 
@@ -275,6 +248,7 @@ object Engine {
                 BluetoothAdapter.ACTION_DISCOVERY_FINISHED -> {
                     _state.update { it.copy(scanning = false) }
                     publishDevices()
+                    checkApps()
                     if (wantScan) main.postDelayed({ if (wantScan) startScan() }, 2000)
                 }
                 BluetoothAdapter.ACTION_STATE_CHANGED -> {
@@ -284,6 +258,14 @@ object Engine {
                     if (s == BluetoothAdapter.STATE_ON) maybeScan()
                 }
                 BluetoothAdapter.ACTION_SCAN_MODE_CHANGED -> refresh()
+                BluetoothDevice.ACTION_UUID -> {
+                    val d = IntentCompat.getParcelableExtra(i, BluetoothDevice.EXTRA_DEVICE, BluetoothDevice::class.java) ?: return
+                    @Suppress("DEPRECATION")
+                    val raw = i.getParcelableArrayExtra(BluetoothDevice.EXTRA_UUID) ?: return
+                    val has = raw.any { (it as? android.os.ParcelUuid)?.uuid == APP_UUID }
+                    appState[d.address] = has
+                    publishDevices()
+                }
                 BluetoothDevice.ACTION_BOND_STATE_CHANGED -> {
                     val d = IntentCompat.getParcelableExtra(i, BluetoothDevice.EXTRA_DEVICE, BluetoothDevice::class.java) ?: return
                     val st = i.getIntExtra(BluetoothDevice.EXTRA_BOND_STATE, -1)
@@ -295,6 +277,20 @@ object Engine {
                 }
             }
         }
+    }
+
+    /** Asks nearby devices which services they offer, so we can tell who has BT Chat open. */
+    private fun checkApps() {
+        if (session != null || _state.value.link !is Link.Idle) return
+        val t = now()
+        val a = adapter ?: return
+        known.values
+            .filter { (lastSeen[it.address] ?: 0L) > t - 40_000L && t - (appChecked[it.address] ?: 0L) > 12_000L }
+            .take(6)
+            .forEach {
+                appChecked[it.address] = t
+                try { a.getRemoteDevice(it.address).fetchUuidsWithSdp() } catch (_: Exception) {}
+            }
     }
 
     private fun teardown() {
@@ -501,13 +497,6 @@ object Engine {
     private fun onText(t: String) {
         addItem(TextItem(seq(), now(), false, t))
         if (!uiVisible) Notifier.message(app, peerName(), t)
-        if (_state.value.carMode) {
-            val who = peerName()
-            main.post {
-                val sp = speaker ?: Speaker(app).also { speaker = it }
-                sp.speak("$who says: $t")
-            }
-        }
     }
 
     private fun onOffer(tid: Long, name: String, size: Long, mime: String) {
@@ -706,11 +695,6 @@ object Engine {
     }
 
     // ---------------------------------------------------------------- small helpers
-
-    fun setCarMode(on: Boolean) {
-        app.getSharedPreferences("btchat", Context.MODE_PRIVATE).edit().putBoolean("car", on).apply()
-        _state.update { it.copy(carMode = on) }
-    }
 
     fun dismissNotice() = _state.update { it.copy(notice = null) }
 

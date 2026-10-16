@@ -118,7 +118,7 @@ private fun Hero(st: EngineState, perms: Perms, act: Actions, connecting: Link.C
             }
             BtText(title, Ty.title, align = TextAlign.Center)
             BtText(
-                "Tap a phone to chat or send files. On the other phone, open BT Chat and tap Make me visible.",
+                "Tap a phone to chat or send files. Green means BT Chat is open on that phone. Otherwise open BT Chat there and tap Be visible.",
                 Ty.small, P.text2, Modifier.padding(top = 4.dp, bottom = 4.dp), align = TextAlign.Center
             )
         }
@@ -151,7 +151,11 @@ private fun DeviceGroup(list: List<Device>, connecting: Link.Connecting?) {
 private fun DeviceRow(d: Device, connecting: Link.Connecting?) {
     val busy = connecting?.address == d.address
     val sub = buildString {
-        append(if (d.bonded) "Paired" else "Not paired yet")
+        append(when (d.hasApp) {
+            true -> "BT Chat is open"
+            false -> "BT Chat isn't open"
+            null -> if (d.seen) "Checking…" else if (d.bonded) "Paired" else "Not paired yet"
+        })
         d.rssi?.let {
             append(" · ")
             append(if (it >= -60) "Very close" else if (it >= -75) "Close" else "Further away")
@@ -170,11 +174,11 @@ private fun DeviceRow(d: Device, connecting: Link.Connecting?) {
         Spacer(Modifier.width(14.dp))
         Column(Modifier.weight(1f)) {
             BtText(d.name, Ty.bodyB, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            BtText(sub, Ty.small, P.text2)
+            BtText(sub, Ty.small, if (d.hasApp == true) P.ok else P.text2)
         }
         Spacer(Modifier.width(8.dp))
         BtText(
-            if (busy) "Connecting…" else if (d.bonded) "Chat" else "Pair & chat",
+            if (busy) "Connecting…" else if (d.hasApp == false) "Try" else if (d.bonded) "Chat" else "Pair & chat",
             Ty.bodyB, P.accentText
         )
     }
@@ -183,18 +187,6 @@ private fun DeviceRow(d: Device, connecting: Link.Connecting?) {
 @Composable
 private fun SettingsGroup(st: EngineState, act: Actions) {
     Group {
-        Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
-                BtText("Read messages aloud", Ty.bodyB)
-                BtText(
-                    "Handy in the car. If your phone is connected to the car, messages play through its speakers.",
-                    Ty.small, P.text2, Modifier.padding(top = 2.dp)
-                )
-            }
-            Spacer(Modifier.width(14.dp))
-            Toggle(st.carMode) { Engine.setCarMode(it) }
-        }
-        Divider(16.dp)
         Row(
             Modifier.fillMaxWidth().pressable(onClick = act.openDownloads).padding(16.dp),
             verticalAlignment = Alignment.CenterVertically

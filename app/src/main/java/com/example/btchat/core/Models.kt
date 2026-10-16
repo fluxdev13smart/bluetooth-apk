@@ -8,7 +8,8 @@ data class Device(
     val bonded: Boolean,
     val rssi: Int?,
     val seen: Boolean,
-    val computer: Boolean
+    val computer: Boolean,
+    val hasApp: Boolean? = null
 )
 
 data class Peer(val address: String, val name: String)
@@ -67,7 +68,6 @@ data class EngineState(
     val items: List<Item> = emptyList(),
     val pending: List<PendingFile> = emptyList(),
     val notice: String? = null,
-    val carMode: Boolean = false,
     val myName: String = "",
     val running: Boolean = false,
     val pendingText: String = ""
