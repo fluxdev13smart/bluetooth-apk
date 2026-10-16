@@ -553,7 +553,7 @@ object Engine {
             val who = peerName()
             main.post {
                 val sp = speaker ?: Speaker(app).also { speaker = it }
-                sp.speak("$who says: $t")
+                sp.speak("$who says: ${t.take(1500)}")
             }
         }
     }
