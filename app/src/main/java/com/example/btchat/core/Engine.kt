@@ -271,7 +271,7 @@ object Engine {
         val list = known.values
             .map { it.copy(seen = (lastSeen[it.address] ?: 0L) > t - 40_000L, hasApp = appState[it.address]) }
             .sortedWith(compareByDescending<Device> { it.seen }.thenByDescending { it.hasApp == true }.thenByDescending { it.rssi ?: -200 }.thenBy { it.name.lowercase() })
-        val shown = list.filter { it.address !in hidden }
+        val shown = list.filter { !hidden.containsKey(it.address) }
         val extra = hidden.filterKeys { k -> list.none { it.address == k } }
             .map { Device(it.key, it.value, true, null, false, false) }
         _state.update { it.copy(devices = shown, allDevices = list + extra, hidden = hidden.keys.toSet()) }
@@ -371,7 +371,7 @@ object Engine {
         val t = now()
         val a = adapter ?: return
         known.values
-            .filter { it.address !in hidden && (lastSeen[it.address] ?: 0L) > t - 40_000L && t - (appChecked[it.address] ?: 0L) > 12_000L }
+            .filter { !hidden.containsKey(it.address) && (lastSeen[it.address] ?: 0L) > t - 40_000L && t - (appChecked[it.address] ?: 0L) > 12_000L }
             .take(6)
             .forEach {
                 appChecked[it.address] = t
