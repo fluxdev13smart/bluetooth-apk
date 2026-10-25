@@ -227,6 +227,17 @@ private fun SettingsGroup(st: EngineState, act: Actions) {
         }
         Divider(16.dp)
         Row(
+            Modifier.fillMaxWidth().pressable(onClick = { Nav.hide = true }).padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(Modifier.weight(1f)) {
+                BtText("Hide devices", Ty.bodyB)
+                BtText("Remove phones and cars you don't want in the list.", Ty.small, P.text2, Modifier.padding(top = 2.dp))
+            }
+            if (st.hidden.isNotEmpty()) BtText("${st.hidden.size} hidden", Ty.small, P.text2)
+        }
+        Divider(16.dp)
+        Row(
             Modifier.fillMaxWidth().pressable(onClick = act.openDownloads).padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {

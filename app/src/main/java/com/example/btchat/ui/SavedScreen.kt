@@ -47,6 +47,7 @@ import com.example.btchat.core.SavedItem
 /** Tiny navigation flag: the Saved screen slides over whatever is showing. */
 object Nav {
     var saved by mutableStateOf(false)
+    var hide by mutableStateOf(false)
     var car by mutableStateOf(false)
 }
 
@@ -210,5 +211,67 @@ private fun Field(value: String, onChange: (String) -> Unit, hint: String, singl
                 }
             }
         )
+    }
+}
+
+@Composable
+fun HiddenScreen(all: List<com.example.btchat.core.Device>, hidden: Set<String>) {
+    BackHandler { Nav.hide = false }
+    Box(
+        Modifier
+            .fillMaxSize()
+            .background(P.bg)
+            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { }
+    ) {
+        Column(Modifier.fillMaxSize()) {
+            Box(Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 8.dp, vertical = 6.dp)) {
+                Row(
+                    Modifier.align(Alignment.CenterStart).pressable(onClick = { Nav.hide = false }).padding(horizontal = 8.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    GlyphIcon(Glyph.Back, P.accentText)
+                    Spacer(Modifier.width(4.dp))
+                    BtText("Back", Ty.body, P.accentText)
+                }
+            }
+            LazyColumn(
+                Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 32.dp)
+            ) {
+                item {
+                    Column(Modifier.padding(start = 4.dp, top = 8.dp, bottom = 12.dp)) {
+                        BtText("Hide devices", Ty.large)
+                        BtText("Switch on the ones you never want to see in the list.", Ty.small, P.text2, Modifier.padding(top = 2.dp))
+                    }
+                }
+                if (all.isEmpty()) {
+                    item {
+                        BtText(
+                            "No devices yet. They show up here after BT Chat has seen them once.",
+                            Ty.body, P.text2, Modifier.padding(16.dp), align = TextAlign.Center
+                        )
+                    }
+                } else {
+                    item {
+                        Group {
+                            all.forEachIndexed { i, d ->
+                                if (i > 0) Divider(16.dp)
+                                Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                                    Column(Modifier.weight(1f)) {
+                                        BtText(d.name, Ty.bodyB, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                        BtText(
+                                            if (d.address in hidden) "Hidden" else if (d.seen) "Nearby" else if (d.bonded) "Paired" else "Seen before",
+                                            Ty.small, P.text2
+                                        )
+                                    }
+                                    Spacer(Modifier.width(14.dp))
+                                    Toggle(d.address in hidden) { on -> if (on) Engine.hide(d.address) else Engine.unhide(d.address) }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 }

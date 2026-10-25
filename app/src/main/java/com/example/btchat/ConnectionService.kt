@@ -35,6 +35,13 @@ class ConnectionService : Service() {
 
     override fun onBind(intent: Intent?): IBinder? = null
 
+    /** The app was swiped away from recents: close the connection and go away. */
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        Engine.shutdown()
+        stopSelf()
+        super.onTaskRemoved(rootIntent)
+    }
+
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == ACTION_QUIT) {
             Engine.shutdown()

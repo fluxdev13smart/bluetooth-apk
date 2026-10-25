@@ -64,6 +64,11 @@ fun BtRoot(perms: Perms, act: Actions) {
                 enter = slideInVertically(smooth()) { it / 6 } + fadeIn(),
                 exit = slideOutVertically(quick()) { it / 6 } + fadeOut()
             ) { CarScreen(st) }
+            AnimatedVisibility(
+                visible = Nav.hide,
+                enter = slideInVertically(smooth()) { it / 6 } + fadeIn(),
+                exit = slideOutVertically(quick()) { it / 6 } + fadeOut()
+            ) { HiddenScreen(st.allDevices, st.hidden) }
             NoticeBar(st.notice)
         }
     }

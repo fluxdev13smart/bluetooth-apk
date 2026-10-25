@@ -83,6 +83,12 @@ class MainActivity : ComponentActivity() {
         Engine.setUiVisible(true)
     }
 
+    override fun onDestroy() {
+        // Closed for real (back out or swipe away): stop everything. Not on rotation.
+        if (isFinishing) Engine.shutdown()
+        super.onDestroy()
+    }
+
     override fun onStop() {
         Engine.setUiVisible(false)
         super.onStop()

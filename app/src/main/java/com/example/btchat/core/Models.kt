@@ -71,6 +71,8 @@ data class EngineState(
     val myName: String = "",
     val carMode: Boolean = false,
     val autoCopy: Boolean = false,
+    val allDevices: List<Device> = emptyList(),
+    val hidden: Set<String> = emptySet(),
     val running: Boolean = false,
     val pendingText: String = ""
 )

@@ -185,6 +185,7 @@ object Engine {
     fun init(ctx: Context) {
         if (::app.isInitialized) return
         app = ctx.applicationContext
+        loadHidden()
         val sp0 = app.getSharedPreferences("btchat", Context.MODE_PRIVATE)
         _state.update { it.copy(carMode = sp0.getBoolean("car", false), autoCopy = sp0.getBoolean("autocopy", false)) }
         adapter = (app.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager).adapter
@@ -270,7 +271,37 @@ object Engine {
         val list = known.values
             .map { it.copy(seen = (lastSeen[it.address] ?: 0L) > t - 40_000L, hasApp = appState[it.address]) }
             .sortedWith(compareByDescending<Device> { it.seen }.thenByDescending { it.hasApp == true }.thenByDescending { it.rssi ?: -200 }.thenBy { it.name.lowercase() })
-        _state.update { it.copy(devices = list) }
+        val shown = list.filter { it.address !in hidden }
+        val extra = hidden.filterKeys { k -> list.none { it.address == k } }
+            .map { Device(it.key, it.value, true, null, false, false) }
+        _state.update { it.copy(devices = shown, allDevices = list + extra, hidden = hidden.keys.toSet()) }
+    }
+
+    /** Devices the user chose not to see (address -> last known name). Saved across launches. */
+    private val hidden = java.util.concurrent.ConcurrentHashMap<String, String>()
+
+    private fun loadHidden() {
+        try {
+            val o = org.json.JSONObject(app.getSharedPreferences("btchat", Context.MODE_PRIVATE).getString("hidden", "{}") ?: "{}")
+            o.keys().forEach { hidden[it] = o.getString(it) }
+        } catch (_: Exception) {}
+    }
+
+    private fun saveHidden() {
+        app.getSharedPreferences("btchat", Context.MODE_PRIVATE).edit()
+            .putString("hidden", org.json.JSONObject(hidden as Map<*, *>).toString()).apply()
+    }
+
+    fun hide(address: String) {
+        hidden[address] = known[address]?.name ?: hidden[address] ?: address
+        saveHidden()
+        publishDevices()
+    }
+
+    fun unhide(address: String) {
+        hidden.remove(address)
+        saveHidden()
+        publishDevices()
     }
 
     private fun maybeScan() {
@@ -340,7 +371,7 @@ object Engine {
         val t = now()
         val a = adapter ?: return
         known.values
-            .filter { (lastSeen[it.address] ?: 0L) > t - 40_000L && t - (appChecked[it.address] ?: 0L) > 12_000L }
+            .filter { it.address !in hidden && (lastSeen[it.address] ?: 0L) > t - 40_000L && t - (appChecked[it.address] ?: 0L) > 12_000L }
             .take(6)
             .forEach {
                 appChecked[it.address] = t
