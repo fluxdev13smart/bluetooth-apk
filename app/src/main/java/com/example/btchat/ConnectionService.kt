@@ -107,6 +107,7 @@ class ConnectionService : Service() {
     }
 
     override fun onDestroy() {
+        Engine.shutdown()
         job?.cancel()
         setWake(false)
         scope.cancel()

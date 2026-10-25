@@ -50,6 +50,7 @@
         <service
             android:name=".ConnectionService"
             android:exported="false"
+            android:stopWithTask="true"
             android:foregroundServiceType="connectedDevice" />
     </application>
 
