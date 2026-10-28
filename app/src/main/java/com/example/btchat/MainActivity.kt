@@ -45,22 +45,87 @@ class MainActivity : ComponentActivity() {
     private val actions by lazy {
         Actions(
             askPermissions = { askPerm.launch(requestList()) },
-            enableBt = { enableBt.launch(Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)) },
+            enableBt = { external("bt") { enableBt.launch(Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)) } },
             makeVisible = {
-                visibleReq.launch(
-                    Intent(BluetoothAdapter.ACTION_REQUEST_DISCOVERABLE)
-                        .putExtra(BluetoothAdapter.EXTRA_DISCOVERABLE_DURATION, 300)
-                )
+                external("visible") {
+                    visibleReq.launch(
+                        Intent(BluetoothAdapter.ACTION_REQUEST_DISCOVERABLE)
+                            .putExtra(BluetoothAdapter.EXTRA_DISCOVERABLE_DURATION, 300)
+                    )
+                }
             },
             pickFiles = { pick.launch(arrayOf("*/*")) },
-            openLocation = { startActivity(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)) },
-            openDownloads = { startActivity(Intent(DownloadManager.ACTION_VIEW_DOWNLOADS)) },
+            openLocation = { external("location") { startActivity(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)) } },
+            openDownloads = { external("downloads") { startActivity(Intent(DownloadManager.ACTION_VIEW_DOWNLOADS)) } },
             quit = { Engine.shutdown(); finishAndRemoveTask() }
         )
     }
 
+    // ---- screens that throw you out of the app (some car head units) -------------------------
+
+    private val prefs by lazy { getSharedPreferences("btchat", MODE_PRIVATE) }
+    private var launchedExternal = false
+
+    private fun manualMessage(key: String): String {
+        val what = when (key) {
+            "bt" -> "Turn Bluetooth on"
+            "visible" -> "Make Bluetooth visible"
+            "location" -> "Turn Location on"
+            else -> "Open your downloads"
+        }
+        val where = if (key == "downloads") "in your Files app (Downloads / BT Chat)" else "in your device's settings"
+        return "Not supported through the app on this screen. $what manually $where."
+    }
+
+    private fun isBlocked(key: String) = prefs.getStringSet("ext_blocked", emptySet())?.contains(key) == true
+
+    private fun block(key: String) {
+        val set = (prefs.getStringSet("ext_blocked", emptySet()) ?: emptySet()).toMutableSet().apply { add(key) }
+        prefs.edit().putStringSet("ext_blocked", set).apply()
+    }
+
+    /**
+     * Opens a system screen. We write a marker first; if we come back normally the marker is cleared in onResume.
+     * If the app instead starts from scratch with the marker still set, the system screen threw us out,
+     * so we remember that and show instructions from then on instead of launching it again.
+     */
+    private fun external(key: String, launch: () -> Unit) {
+        if (isBlocked(key)) {
+            Engine.toast(manualMessage(key))
+            return
+        }
+        prefs.edit().putString("ext_key", key).putLong("ext_at", System.currentTimeMillis()).apply()
+        launchedExternal = true
+        try {
+            launch()
+        } catch (e: Exception) {
+            launchedExternal = false
+            prefs.edit().remove("ext_key").apply()
+            block(key)
+            Engine.toast(manualMessage(key))
+        }
+    }
+
+    private fun checkKicked(): String? {
+        val key = prefs.getString("ext_key", null) ?: return null
+        val at = prefs.getLong("ext_at", 0L)
+        prefs.edit().remove("ext_key").apply()
+        if (System.currentTimeMillis() - at > 180_000L) return null
+        block(key)
+        return manualMessage(key)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        if (launchedExternal) {
+            launchedExternal = false
+            prefs.edit().remove("ext_key").apply()
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        val kicked = checkKicked()
         enableEdgeToEdge(
             statusBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
             navigationBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT)
@@ -75,6 +140,7 @@ class MainActivity : ComponentActivity() {
         readPerms()
         handleShare(intent)
         setContent { BtRoot(perms, actions) }
+        kicked?.let { Engine.toast(it) }
     }
 
     override fun onNewIntent(intent: Intent) {
